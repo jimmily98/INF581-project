@@ -149,7 +149,10 @@ class CleanPuffeRL:
         # If an agent_creator is provided, use envs (=self.buffers[0]) to create the agent
         self.agent = pufferlib.emulation.make_object(
             self.agent, self.agent_creator, self.buffers[:1], self.agent_kwargs)
-
+        
+        # !
+        self.agent_target = pufferlib.emulation.make_object(
+            self.agent, self.agent_creator, self.buffers[:1], self.agent_kwargs)
         if self.verbose:
             print(
                 "Allocated %.2f MB to environments. Only accurate for Serial backend."
@@ -181,10 +184,21 @@ class CleanPuffeRL:
         self.agent.is_recurrent = hasattr(self.agent, "lstm")
         self.agent = self.agent.to(self.device)
 
+        if "policy_checkpoint_name" in resume_state:
+          self.agent_target = self.policy_store.get_policy(
+            resume_state["policy_checkpoint_name"]
+          ).policy(policy_args=[self.buffers[0]])
+
+
+        self.agent_target.is_recurrent = hasattr(self.agent_target, "lstm")
+        self.agent_target = self.agent_target.to(self.device)
+
+
+
         # Setup policy pool
         if self.policy_pool is None:
             self.policy_pool = pufferlib.policy_pool.PolicyPool(
-                self.agent,
+                self.agent_target, #for target
                 "learner",
                 num_envs=self.num_envs,
                 num_agents=self.num_agents,
@@ -522,7 +536,7 @@ class CleanPuffeRL:
             .transpose(0, 1)
         )
 
-        # bootstrap value if not done
+        # bootstrap value if not done ?
         with torch.no_grad():
             advantages = torch.zeros(self.batch_size, device=self.device)
             lastgaelam = 0
@@ -651,6 +665,10 @@ class CleanPuffeRL:
                 loss.backward()
                 nn.utils.clip_grad_norm_(self.agent.parameters(), max_grad_norm)
                 self.optimizer.step()
+
+                if mb%200 == 0:
+                    self.agent_target.load_state_dict(self.agent.state_dict())
+
 
             if target_kl is not None:
                 if approx_kl > target_kl:
