@@ -145,14 +145,14 @@ class CleanPuffeRL:
             for _ in range(self.num_buffers)
         ]
         self.num_agents = self.buffers[0].num_agents
-
+        self.agent_target = pufferlib.emulation.make_object(
+            self.agent, self.agent_creator, self.buffers[:1], self.agent_kwargs)
         # If an agent_creator is provided, use envs (=self.buffers[0]) to create the agent
         self.agent = pufferlib.emulation.make_object(
             self.agent, self.agent_creator, self.buffers[:1], self.agent_kwargs)
         
         # !
-        self.agent_target = pufferlib.emulation.make_object(
-            self.agent, self.agent_creator, self.buffers[:1], self.agent_kwargs)
+        
         if self.verbose:
             print(
                 "Allocated %.2f MB to environments. Only accurate for Serial backend."
