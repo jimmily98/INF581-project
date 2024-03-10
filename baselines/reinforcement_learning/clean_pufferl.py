@@ -486,6 +486,7 @@ class CleanPuffeRL:
         norm_adv=True,
         clip_coef=0.1,
         clip_vloss=True,
+        
         ent_coef=0.01,
         vf_coef=0.5,
         max_grad_norm=0.5,
@@ -494,6 +495,7 @@ class CleanPuffeRL:
         replay_buffer = ReplayBuffer(),
         batch_cff = 2
     ):
+        print("enter training")
         if self.done_training():
             raise RuntimeError(
                 f"Trying to train for more than max_updates={self.total_updates} updates"
@@ -553,6 +555,8 @@ class CleanPuffeRL:
         # Optimizing the policy and value network
         train_time = time.time()
         clipfracs = []
+        #print("update epochs", update_epochs)
+        #print("num_minibatches",num_minibatches)
         for epoch in range(update_epochs):
             lstm_state = None
             for mb in range(num_minibatches):
@@ -561,16 +565,19 @@ class CleanPuffeRL:
                 mb_values = b_values[mb].reshape(-1)
                 mb_advantages = b_advantages[mb].reshape(-1)
                 mb_returns = b_returns[mb].reshape(-1)
+                #print("mb_action:",mb_actions.device)
+                
             
                 replay_buffer.add(mb_obs,mb_actions,mb_values,mb_advantages,mb_returns)
                 if len(replay_buffer) > batch_cff * batch_rows * bptt_horizon:
                     # sample from batchs
-                    mb_obs,mb_actions,mb_values,mb_advantages,mb_returns,mb_actions = replay_buffer.sample(1)
-                    mb_obs = mb_obs.to(self.device)
-                    mb_actions = mb_actions.contiguous()
-                    mb_values = mb_values.reshape(-1)
-                    mb_advantages = mb_advantages.reshape(-1)
-                    mb_returns = mb_returns.reshape(-1)
+                    mb_obs,mb_actions,mb_values,mb_advantages,mb_returns = replay_buffer.sample(1)
+                    mb_obs = torch.tensor(mb_obs).to(self.device)
+                    mb_actions = torch.tensor(mb_actions).contiguous().to(self.device)
+                    mb_values = torch.tensor(mb_values.reshape(-1)).to(self.device)
+                    mb_advantages = torch.tensor(mb_advantages.reshape(-1)).to(self.device)
+                    mb_returns = torch.tensor(mb_returns.reshape(-1)).to(self.device)
+            
 
                 if self.agent.is_recurrent:
                     (
@@ -702,6 +709,7 @@ class CleanPuffeRL:
             )
 
         if self.update % self.checkpoint_interval == 1 or self.done_training():
+           print("go to save")
            self._save_checkpoint()
 
     def done_training(self):
@@ -715,6 +723,7 @@ class CleanPuffeRL:
             wandb.finish()
 
     def _save_checkpoint(self):
+        print("checkpoint dir", self.data_dir)
         if self.data_dir is None:
             return
 

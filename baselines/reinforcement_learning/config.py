@@ -18,12 +18,12 @@ class Config:
     num_buffers = 2  # Number of buffers to use for training
     rollout_batch_size = 2**15 # Number of steps to rollout
     eval_batch_size = 2**15 # Number of steps to rollout for eval
-    train_num_steps = 10_000_000  # Number of steps to train
-    eval_num_steps = 1_000_000  # Number of steps to evaluate
+    train_num_steps = 10_000_0  # Number of steps to train
+    eval_num_steps = 1_000_00  # Number of steps to evaluate
     checkpoint_interval = 30  # Interval to save models
     run_name = f"nmmo_{time.strftime('%Y%m%d_%H%M%S')}"  # Run name
-    runs_dir = "/tmp/runs"  # Directory for runs
-    policy_store_dir = None # Policy store directory
+    runs_dir = "../runs"  # Directory for runs
+    policy_store_dir = "./policies" # Policy store directory
     use_serial_vecenv = False  # Use serial vecenv implementation
     learner_weight = 1.0  # Weight of learner policy
     max_opponent_policies = 0  # Maximum number of opponent policies to train against
