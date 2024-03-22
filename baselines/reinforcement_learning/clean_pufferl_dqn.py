@@ -27,6 +27,7 @@ import pufferlib.policy_pool
 import pufferlib.policy_ranker
 import pufferlib.utils
 import pufferlib.vectorization
+from collections import namedtuple
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward', 'done'))
 
@@ -242,7 +243,7 @@ class CleanPuffeRLDQN:
 
         # TODO: this can be cleaned up
         #self.agent.is_recurrent = hasattr(self.agent, "lstm")
-        self.agent = self.agent.to(self.device)
+        #self.agent = self.agent.to(self.device)
 
         # Setup policy pool ...
 
@@ -250,7 +251,7 @@ class CleanPuffeRLDQN:
 
         # Setup optimizer
         self.optimizer = optim.Adam(
-            self.agent.parameters(), lr=self.learning_rate, eps=1e-5
+            self.agent.policy_net.parameters(), lr=self.learning_rate, eps=1e-5
         )
         if "optimizer_state_dict" in resume_state:
           self.optimizer.load_state_dict(resume_state["optimizer_state_dict"])
@@ -414,7 +415,7 @@ class CleanPuffeRLDQN:
                     break
 
                 data.obs[ptr] = obs[idx]
-                data.values[ptr] = value[idx]
+                #data.values[ptr] = value[idx]
                 data.actions[ptr] = actions[idx]
                 #data.logprobs[ptr] = logprob[idx]
                 data.sort_keys.append((buf, idx, step))
@@ -480,7 +481,7 @@ class CleanPuffeRLDQN:
         return data, stats, infos
 
     @pufferlib.utils.profile
-    def train(
+    def train_depre(
         self,
         batch_rows=32,
         update_epochs=4,
@@ -528,21 +529,23 @@ class CleanPuffeRLDQN:
         )
 
         # bootstrap value if not done
+        ## TO CHANGE
         with torch.no_grad():
             advantages = torch.zeros(self.batch_size, device=self.device)
             lastgaelam = 0
             for t in reversed(range(self.batch_size)):
                 i, i_nxt = idxs[t], idxs[t + 1]
                 nextnonterminal = 1.0 - data.dones[i_nxt]
-                nextvalues = data.values[i_nxt]
-                delta = (
-                    data.rewards[i_nxt]
-                    + gamma * nextvalues * nextnonterminal
-                    - data.values[i]
-                )
-                advantages[t] = lastgaelam = (
-                    delta + gamma * gae_lambda * nextnonterminal * lastgaelam
-                )
+
+                #nextvalues = data.values[i_nxt]
+                # delta = (
+                #     data.rewards[i_nxt]
+                #     #+ gamma * nextvalues * nextnonterminal
+                #     - data.values[i]
+                # )
+                # advantages[t] = lastgaelam = (
+                #     delta + gamma * gae_lambda * nextnonterminal * lastgaelam
+                # )
 
         # Flatten the batch
         data.b_obs = b_obs = data.obs[b_idxs]
@@ -708,6 +711,57 @@ class CleanPuffeRLDQN:
 
         if self.update % self.checkpoint_interval == 1 or self.done_training():
            self._save_checkpoint()
+
+    @pufferlib.utils.profile
+    def train(
+        self,
+        num_episodes,
+        max_steps_per_episode,
+        batch_size,
+        gamma=0.99,  # Discount factor for future rewards
+        target_update_freq=10,  # How often to update the target network
+        epsilon_start=1.0,
+        epsilon_end=0.1,
+        epsilon_decay=0.995):
+        epsilon = epsilon_start
+        print("DQN now")
+        for episode in range(num_episodes):
+            state = self.buffers[0].reset()# buf idx
+            episode_rewards = 0
+            
+            for step in range(max_steps_per_episode):
+                action = [self.agent.select_action(state[agent_id], self.epsilon) for agent_id in range(self.num_agents)]
+                self.buffers[0].send(action)
+                next_state, reward, done, _ = self.buffers[0].recv()
+
+                for agent_id in range(self.num_agents):
+                    self.agent.replay_buffer.add(state[agent_id], action[agent_id], reward[agent_id], next_state[agent_id], done[agent_id])
+
+                    if len(self.agent.replay_buffer) > batch_size:
+                        transitions = self.agent.replay_buffer.sample(batch_size)
+                        self.agent.optimize_model(transitions, gamma)
+
+                    state = next_state  # Update the state
+
+                    if done[agent_id]:
+                        break
+            # Train the policy network using a batch of experiences from the replay buffer
+            if episode % target_update_freq == 0:
+                self.agent.update_target_net()
+            
+            # Update epsilon
+            epsilon = max(epsilon_end, epsilon_decay * epsilon)
+                
+            # Print the total rewards obtained in the episode
+            print(f"Episode {episode}: Total Reward = {episode_rewards}")
+            
+            # Update the target network with weights from the policy network
+            if self.wandb_entity:
+                wandb.log({
+                "episode": episode,
+                "epsilon": epsilon,
+                "episode_reward": episode_rewards
+            })
 
     def done_training(self):
         return self.update >= self.total_updates
