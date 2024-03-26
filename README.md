@@ -6,6 +6,8 @@ Ecole Polytechnique INF581 2023-2024 team project.
 
 ### Code Execution Method
 
+<span style="color:red">You DO NOT need to download the whole repository, just the NeuralMMO.ipynb should be enough. text</span>.
+
 Upload the NeuralMMO.ipynb to colab and execute.
 
 To run this jupyter notebook, please ensure that the google drive is mounted.
