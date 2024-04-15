@@ -1,4 +1,4 @@
-# Comment to test git branch
+# Comment to test main
 import matplotlib.pyplot as plt
 import subprocess
 import os
