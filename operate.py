@@ -1,4 +1,5 @@
 # Comment to test git branch
+import numpy as np
 import matplotlib.pyplot as plt
 import subprocess
 import os
