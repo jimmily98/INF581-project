@@ -1,3 +1,5 @@
+# Comment to test git branch
+import matplotlib.pyplot as plt
 import subprocess
 import os
 import torch
@@ -16,7 +18,7 @@ for cmd in commands:
 assert torch.cuda.is_available, "CUDA gpu not available"
 
 # change to your directory
-WORK_DIR = "/users/eleves-a/2021/hangao.liang/nmmo/"
+WORK_DIR = "C:/Users/Hangao Liang/OneDrive - Ecole Polytechnique/3AP2/INF581/LABS/nmmo/INF581-project/"
 CKPT_DIR = WORK_DIR + "runs"
 
 os.chdir(WORK_DIR+"baselines")
