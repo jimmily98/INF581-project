@@ -1,4 +1,9 @@
+<<<<<<< HEAD
 # Comment to test main
+=======
+# Comment to test git branch
+import numpy as np
+>>>>>>> branch_test
 import matplotlib.pyplot as plt
 import subprocess
 import os
